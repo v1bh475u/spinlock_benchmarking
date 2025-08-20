@@ -13,7 +13,7 @@ namespace concurrency
         void lock()
         {
             bool expected = false;
-            while (!locked_.compare_exchange_weak(expected, true))
+            while (!locked_.compare_exchange_strong(expected, true))
             {
                 expected = false;
             }
@@ -60,7 +60,7 @@ namespace concurrency
                 while (lock_.load())
                     ;
                 bool expected = false;
-                if (lock_.compare_exchange_weak(expected, true))
+                if (lock_.compare_exchange_strong(expected, true))
                     return;
             }
         }
