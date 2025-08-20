@@ -46,4 +46,27 @@ namespace concurrency
             front_.fetch_add(1);
         }
     };
+
+    class double_check_lock
+    {
+    private:
+        std::atomic<bool> lock_{false};
+
+    public:
+        void lock()
+        {
+            while (true)
+            {
+                while (lock_.load())
+                    ;
+                bool expected = false;
+                if (lock_.compare_exchange_weak(expected, true))
+                    return;
+            }
+        }
+        void unlock()
+        {
+            lock_.store(false);
+        }
+    };
 }
