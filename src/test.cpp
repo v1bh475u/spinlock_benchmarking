@@ -61,5 +61,8 @@ int main()
     std::cout << "Testing double_check_lock..." << std::endl;
     test_lock<concurrency::double_check_lock>();
 
+    std::cout << "Testing double_check_lock2..." << std::endl;
+    test_lock<concurrency::double_check_lock2>();
+
     return 0;
 }
