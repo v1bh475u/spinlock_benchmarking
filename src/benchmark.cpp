@@ -187,6 +187,14 @@ BENCHMARK_TEMPLATE(BM_SpinLock_DirectUpdate, concurrency::ticket_lock)
     ->Arg(16)
     ->Name("DirectUpdate_TicketLock");
 
+BENCHMARK_TEMPLATE(BM_SpinLock_DirectUpdate, concurrency::double_check_lock)
+    ->Arg(1)
+    ->Arg(2)
+    ->Arg(4)
+    ->Arg(8)
+    ->Arg(16)
+    ->Name("DirectUpdate_DoubleCheckLock");
+
 BENCHMARK(BM_StdMutex_DirectUpdate)
     ->Arg(1)
     ->Arg(2)
@@ -211,6 +219,14 @@ BENCHMARK_TEMPLATE(BM_SpinLock_AccumulatedUpdate, concurrency::ticket_lock)
     ->Arg(8)
     ->Arg(16)
     ->Name("AccumulatedUpdate_TicketLock");
+
+BENCHMARK_TEMPLATE(BM_SpinLock_AccumulatedUpdate, concurrency::double_check_lock)
+    ->Arg(1)
+    ->Arg(2)
+    ->Arg(4)
+    ->Arg(8)
+    ->Arg(16)
+    ->Name("AccumulatedUpdate_DoubleCheckLock");
 
 BENCHMARK(BM_StdMutex_AccumulatedUpdate)
     ->Arg(1)

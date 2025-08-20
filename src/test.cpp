@@ -58,5 +58,8 @@ int main()
     std::cout << "Testing ticket_lock..." << std::endl;
     test_lock<concurrency::ticket_lock>();
 
+    std::cout << "Testing double_check_lock..." << std::endl;
+    test_lock<concurrency::double_check_lock>();
+
     return 0;
 }
