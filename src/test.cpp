@@ -6,7 +6,7 @@
 #include <vector>
 
 // Test function template for any lock type
-template <typename LockType> void test_lock() {
+template <typename LockType> bool test_lock() {
   LockType lock;
   std::atomic<int> counter(0);
 
@@ -36,24 +36,28 @@ template <typename LockType> void test_lock() {
   // Check if counter is correct
   if (counter == num_threads * iterations_per_thread) {
     std::cout << "PASSED: Counter value is " << counter << std::endl;
+    return true;
   } else {
     std::cerr << "FAILED: Counter value is " << counter << " (expected "
               << num_threads * iterations_per_thread << ")" << std::endl;
+    return false;
   }
 }
 
 int main() {
+  bool ok = true;
+
   std::cout << "Testing base_lock..." << std::endl;
-  test_lock<concurrency::base_lock>();
+  ok &= test_lock<concurrency::base_lock>();
 
   std::cout << "Testing ticket_lock..." << std::endl;
-  test_lock<concurrency::ticket_lock>();
+  ok &= test_lock<concurrency::ticket_lock>();
 
   std::cout << "Testing double_check_lock..." << std::endl;
-  test_lock<concurrency::double_check_lock>();
+  ok &= test_lock<concurrency::double_check_lock>();
 
   std::cout << "Testing double_check_lock2..." << std::endl;
-  test_lock<concurrency::double_check_lock2>();
+  ok &= test_lock<concurrency::double_check_lock2>();
 
-  return 0;
+  return ok ? 0 : 1;
 }
