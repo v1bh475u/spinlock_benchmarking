@@ -1,2 +1,5 @@
 build/
 .cache/
+build-*/
+benchmark-results/
+.venv/
