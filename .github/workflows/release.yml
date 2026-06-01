@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Linux release artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      - name: Configure
+        run: cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-release --parallel
+
+      - name: Test
+        run: ctest --test-dir build-release --output-on-failure
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist/spinlock-benchmark-linux-x86_64/bin
+          cp build-release/spinlock_bench build-release/spinlock_test dist/spinlock-benchmark-linux-x86_64/bin/
+          cp README.md CMakeLists.txt dist/spinlock-benchmark-linux-x86_64/
+          cp -r include src scripts dist/spinlock-benchmark-linux-x86_64/
+          tar -C dist -czf dist/spinlock-benchmark-linux-x86_64.tar.gz spinlock-benchmark-linux-x86_64
+          git archive --format=tar.gz -o dist/spinlock-benchmark-source.tar.gz HEAD
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            dist/spinlock-benchmark-linux-x86_64.tar.gz \
+            dist/spinlock-benchmark-source.tar.gz \
+            --generate-notes

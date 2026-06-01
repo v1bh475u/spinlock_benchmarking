@@ -1,0 +1,77 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      repetitions:
+        description: Google Benchmark repetitions
+        required: false
+        default: "10"
+      min_time:
+        description: Minimum time per benchmark
+        required: false
+        default: "0.5s"
+      benchmark_filter:
+        description: Google Benchmark regex filter
+        required: false
+        default: ".*"
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    name: Run benchmark suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python dependencies
+        run: python3 -m pip install -r scripts/requirements.txt
+
+      - name: Run benchmarks
+        env:
+          REPETITIONS: ${{ github.event.inputs.repetitions || '10' }}
+          MIN_TIME: ${{ github.event.inputs.min_time || '0.5s' }}
+          BENCHMARK_FILTER: ${{ github.event.inputs.benchmark_filter || '.*' }}
+        run: |
+          python3 scripts/run_benchmarks.py \
+            --build-dir build-release \
+            --out-dir benchmark-results \
+            --build-type Release \
+            --cxx g++ \
+            --repetitions "$REPETITIONS" \
+            --min-time "$MIN_TIME" \
+            --benchmark-filter "$BENCHMARK_FILTER"
+
+      - name: Generate report
+        run: |
+          python3 scripts/generate_report.py \
+            benchmark-results/benchmark.json \
+            --out-dir benchmark-results/report
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spinlock-benchmark-results
+          path: benchmark-results
+          if-no-files-found: error
+          retention-days: 30
