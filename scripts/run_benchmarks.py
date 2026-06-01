@@ -35,15 +35,42 @@ def probe(args: list[str]) -> str:
         return ""
 
 
+def detect_processor() -> str:
+    candidates = [
+        platform.processor(),
+        getattr(platform.uname(), "processor", ""),
+        probe(["uname", "-p"]),
+    ]
+    for candidate in candidates:
+        value = candidate.strip()
+        if value and value.lower() not in {"unknown", "none"}:
+            return value
+
+    lscpu_output = probe(["lscpu"])
+    for line in lscpu_output.splitlines():
+        if line.startswith("Model name:"):
+            return line.split(":", 1)[1].strip()
+
+    try:
+        cpuinfo = Path("/proc/cpuinfo").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+    for line in cpuinfo.splitlines():
+        if line.lower().startswith("model name"):
+            return line.split(":", 1)[1].strip()
+
+    return ""
+
+
 def write_metadata(out_dir: Path, args: argparse.Namespace) -> None:
     metadata = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "repository": str(REPO_ROOT),
         "git_commit": probe(["git", "rev-parse", "HEAD"]),
         "git_branch": probe(["git", "rev-parse", "--abbrev-ref", "HEAD"]),
         "platform": platform.platform(),
         "machine": platform.machine(),
-        "processor": platform.processor(),
+        "processor": detect_processor(),
         "python": sys.version,
         "uname": probe(["uname", "-a"]),
         "lscpu": probe(["lscpu"]),
