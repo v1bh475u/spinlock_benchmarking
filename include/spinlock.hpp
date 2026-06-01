@@ -1,6 +1,9 @@
 #pragma once
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <thread>
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__)
 #include <immintrin.h>
 #endif
