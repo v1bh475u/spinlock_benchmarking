@@ -91,6 +91,47 @@ def write_csv(rows: list[Row], path: Path) -> None:
             writer.writerow(row.__dict__)
 
 
+def load_metadata(path: Path | None, benchmark_json: Path) -> dict:
+    if path is None:
+        candidate = benchmark_json.resolve().parent / "metadata.json"
+    else:
+        candidate = path.resolve()
+
+    if not candidate.exists():
+        return {}
+
+    return json.loads(candidate.read_text(encoding="utf-8"))
+
+
+def metadata_lines(metadata: dict) -> list[str]:
+    if not metadata:
+        return []
+
+    fields = [
+        ("Timestamp UTC", metadata.get("timestamp_utc", "")),
+        ("Git commit", metadata.get("git_commit", "")),
+        ("Git branch", metadata.get("git_branch", "")),
+        ("Platform", metadata.get("platform", "")),
+        ("Machine", metadata.get("machine", "")),
+        ("Processor", metadata.get("processor", "")),
+        ("Kernel", metadata.get("uname", "")),
+        ("Compiler", metadata.get("compiler", "").splitlines()[0]),
+        ("CMake", metadata.get("cmake", "").splitlines()[0]),
+    ]
+
+    lines = [
+        "## Machine And Run Metadata",
+        "",
+        "| Field | Value |",
+        "| --- | --- |",
+    ]
+    for label, value in fields:
+        if value:
+            lines.append(f"| {label} | `{value}` |")
+    lines.append("")
+    return lines
+
+
 def best_rows(rows: list[Row]) -> list[Row]:
     best = {}
     for row in rows:
@@ -101,27 +142,43 @@ def best_rows(rows: list[Row]) -> list[Row]:
     return [best[key] for key in sorted(best)]
 
 
-def write_markdown(rows: list[Row], out_dir: Path, path: Path) -> None:
+def plot_markdown_lines(rows: list[Row]) -> list[str]:
+    lines = ["## Plots", ""]
+    scenarios = sorted({row.scenario for row in rows})
+    metrics = [
+        ("real_time_ns", "real time"),
+        ("items_per_second", "throughput"),
+    ]
+
+    for scenario in scenarios:
+        lower = scenario.lower()
+        lines.append(f"### {scenario}")
+        lines.append("")
+        for metric, label in metrics:
+            lines.append(f"![{scenario} {label}](plots/{lower}_{metric}.png)")
+            lines.append("")
+
+    return lines
+
+
+def write_markdown(rows: list[Row], metadata: dict, path: Path) -> None:
     lines = [
         "# Spinlock Benchmark Report",
         "",
         "Generated from `benchmark.json` by `scripts/generate_report.py`.",
         "",
-        "## Plots",
-        "",
-        "![Direct update real time](plots/directupdate_real_time_ns.png)",
-        "",
-        "![Direct update throughput](plots/directupdate_items_per_second.png)",
-        "",
-        "![Accumulated update real time](plots/accumulatedupdate_real_time_ns.png)",
-        "",
-        "![Accumulated update throughput](plots/accumulatedupdate_items_per_second.png)",
-        "",
+    ]
+
+    lines.extend(metadata_lines(metadata))
+    lines.extend(plot_markdown_lines(rows))
+    lines.extend(
+        [
         "## Fastest Implementation By Scenario",
         "",
         "| Scenario | Threads | Implementation | Real time (ns) | Items/s |",
         "| --- | ---: | --- | ---: | ---: |",
-    ]
+        ]
+    )
 
     for row in best_rows(rows):
         lines.append(
@@ -157,20 +214,31 @@ def plot_metric(rows: list[Row], scenario: str, metric: str, ylabel: str, out: P
     scenario_rows = [r for r in rows if r.scenario.lower() == scenario.lower()]
     implementations = sorted({r.implementation for r in scenario_rows})
 
-    fig, ax = plt.subplots(figsize=(10, 6), dpi=160)
-    for implementation in implementations:
+    plt.style.use("seaborn-v0_8-whitegrid")
+    colors = plt.get_cmap("tab10")
+
+    fig, ax = plt.subplots(figsize=(11, 6.5), dpi=180)
+    for index, implementation in enumerate(implementations):
         series = [r for r in scenario_rows if r.implementation == implementation]
         series.sort(key=lambda r: r.threads)
         x = [r.threads for r in series]
         y = [getattr(r, metric) for r in series]
-        ax.plot(x, y, marker="o", linewidth=2, label=implementation)
+        ax.plot(
+            x,
+            y,
+            marker="o",
+            linewidth=2.4,
+            markersize=5,
+            color=colors(index % 10),
+            label=implementation,
+        )
 
     ax.set_title(f"{scenario} {ylabel}")
     ax.set_xlabel("Threads")
     ax.set_ylabel(ylabel)
     ax.set_xticks(sorted({r.threads for r in scenario_rows}))
-    ax.grid(True, which="both", alpha=0.3)
-    ax.legend()
+    ax.grid(True, which="major", alpha=0.35)
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True)
     if metric == "real_time_ns":
         ax.set_yscale("log")
     fig.tight_layout()
@@ -203,6 +271,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate benchmark reports and plots.")
     parser.add_argument("benchmark_json", type=Path, help="Google Benchmark JSON file")
     parser.add_argument("--out-dir", type=Path, default=Path("benchmark-results/report"))
+    parser.add_argument("--metadata-json", type=Path, default=None)
     parser.add_argument("--no-plots", action="store_true")
     return parser.parse_args()
 
@@ -215,9 +284,10 @@ def main() -> int:
     rows = load_rows(args.benchmark_json)
     if not rows:
         raise SystemExit(f"no mean benchmark rows found in {args.benchmark_json}")
+    metadata = load_metadata(args.metadata_json, args.benchmark_json)
 
     write_csv(rows, out_dir / "benchmark.csv")
-    write_markdown(rows, out_dir, out_dir / "summary.md")
+    write_markdown(rows, metadata, out_dir / "summary.md")
     if not args.no_plots:
         write_plots(rows, out_dir)
 

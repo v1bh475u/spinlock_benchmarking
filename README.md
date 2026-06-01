@@ -28,7 +28,23 @@ The lock implementations live in `include/spinlock.hpp`.
 | `DirectUpdate` | Every thread locks, increments the shared counter, and unlocks on each iteration. |
 | `AccumulatedUpdate` | Each thread accumulates locally and locks once to publish its local total. |
 
-Each scenario runs at 1, 2, 4, 8, and 16 threads for every implementation.
+Each scenario runs at 1, 2, 4, 8, 16, and 32 threads for every implementation.
+
+The benchmark executable is configured from a single lock registry in
+`src/benchmark.cpp`:
+
+```cpp
+#define LOCK_BENCHMARKS(X) \
+  X(concurrency::base_lock, "BaseLock") \
+  X(concurrency::ticket_lock, "TicketLock") \
+  X(concurrency::double_check_lock, "DoubleCheckLock") \
+  X(concurrency::double_check_lock2, "DoubleCheckLock2") \
+  X(std::mutex, "StdMutex")
+```
+
+To add another lock, implement a type with `lock()` and `unlock()`, then add one
+line to `LOCK_BENCHMARKS`. The benchmark suite, JSON output, CSV report, Markdown
+summary, and plot generation discover the new lock from the benchmark names.
 
 ## Linux Prerequisites
 
@@ -106,14 +122,15 @@ Generated report outputs:
 | File | Description |
 | --- | --- |
 | `benchmark-results/report/benchmark.csv` | Normalized mean results for each scenario, lock, and thread count. |
-| `benchmark-results/report/summary.md` | Markdown report with fastest-lock tables and embedded plot links. |
+| `benchmark-results/report/summary.md` | Markdown report with machine metadata, fastest-lock tables, and embedded plot links. |
 | `benchmark-results/report/plots/directupdate_real_time_ns.png` | Direct update latency graph. |
 | `benchmark-results/report/plots/directupdate_items_per_second.png` | Direct update throughput graph. |
 | `benchmark-results/report/plots/accumulatedupdate_real_time_ns.png` | Accumulated update latency graph. |
 | `benchmark-results/report/plots/accumulatedupdate_items_per_second.png` | Accumulated update throughput graph. |
 
 Open `benchmark-results/report/summary.md` after generation to view the tables and
-graphs together.
+graphs together. The plots are multi-line charts: x-axis is thread count, y-axis
+is either real time or throughput, and each colored line is one lock type.
 
 ## Benchmarking Checklist
 
