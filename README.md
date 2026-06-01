@@ -203,3 +203,22 @@ src/benchmark.cpp         Google Benchmark suite
 src/test.cpp              Correctness test registered with CTest
 CMakeLists.txt            CMake build configuration
 ```
+
+## Benchmark Results
+
+### Machine Specs
+
+See [`metadata.json`](docs/benchmarks/linux-local/metadata.json).
+
+### Graphs
+
+![Direct update real time](docs/benchmarks/linux-local/plots/directupdate_real_time_ns.png)
+
+![Direct update throughput](docs/benchmarks/linux-local/plots/directupdate_items_per_second.png)
+
+![Accumulated update real time](docs/benchmarks/linux-local/plots/accumulatedupdate_real_time_ns.png)
+
+![Accumulated update throughput](docs/benchmarks/linux-local/plots/accumulatedupdate_items_per_second.png)
+
+Full report: [`summary.md`](docs/benchmarks/linux-local/summary.md)
+
